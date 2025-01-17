@@ -5,8 +5,10 @@ set (CMAKE_CXX_STANDARD 11)
 
 option(BUILD_TEST "Run tests" ON)
 
-#cmake debug
-include(CMakePrintHelpers)
+add_compile_options(
+    -O3
+    -Wall
+)
 
 ########################
 ## LIBRARY
@@ -18,12 +20,6 @@ add_library(
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/ParseException.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/FileException.cpp
-)
-target_compile_options(
-        tfmpvalue
-        PUBLIC
-        -O3
-        -Wall
 )
 
 ########################
@@ -65,20 +61,20 @@ target_compile_definitions(
         TFMpvalue-distrib
         PUBLIC
         JASPAR=1
-        PROGRAM=2
-)
-add_executable(
-        TFMpvalue-fastpvalue
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-)
-target_compile_definitions(
-        TFMpvalue-fastpvalue
-        PUBLIC
-        JASPAR=1
         PROGRAM=3
 )
 add_executable(
+        TFMpvalue-fastpvalue
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
+)
+target_compile_definitions(
+        TFMpvalue-fastpvalue
+        PUBLIC
+        JASPAR=1
+        PROGRAM=4
+)
+add_executable(
         TFMpvalue-lazydistrib
         ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
@@ -87,7 +83,7 @@ target_compile_definitions(
         TFMpvalue-lazydistrib
         PUBLIC
         JASPAR=1
-        PROGRAM=4
+        PROGRAM=5
 )
 
 
@@ -113,8 +109,7 @@ if (BUILD_TEST)
             NAME
             distrib
             COMMAND
-            $<TARGET_FILE:TFMpvalue-distrib>
-            TFMpvalue-distrib -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -S 9 -G 1e-5
+            $<TARGET_FILE:TFMpvalue-distrib> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -S 9 -G 1e-5
     )
 
 endif(BUILD_TEST)
