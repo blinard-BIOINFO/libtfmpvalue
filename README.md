@@ -14,10 +14,49 @@ Original sources can be found at http://bioinfo.lifl.fr/tfm-pvalue/tfm-pvalue.ph
 
 **This project has been archived and is provided as-is, with no additional support or development.**
 
-Installation
+Cmake installation
 ---------------
 
 To use the library, add these lines to your `CMakeLists.txt` file : 
+
+```cmake
+
+########################
+## LIBRARY RETRIEVAL
+
+# options that can be set ON or OFF
+option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" OFF)
+option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" OFF)
+option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" OFF)
+
+# source retrival & static library build
+FetchContent_Declare(
+        libtfmpvalue
+        GIT_REPOSITORY    "https://github.com/blinard-BIOINFO/libtfmpvalue.git"
+        GIT_TAG           "35e68bc114a5339aed3d82ad5f01af641b2064ca"
+)
+FetchContent_MakeAvailable(libtfmpvalue)
+add_library(libtfmpvalue STATIC IMPORTED)
+set_target_properties(libtfmpvalue PROPERTIES IMPORTED_LOCATION ${libtfmpvalue_BINARY_DIR}/libtfmpvalue.a)
+
+
+########################
+## YOUR CMAKE TARGET
+
+add_executable(
+  mybinary
+  src/main.cpp
+)
+target_include_directories(
+  mybinary
+  ${libtfmpvalue_SOURCE_DIR}/include       # <-- !
+)
+target_link_libraries(
+    mybinary
+    PRIVATE
+    libtfmpvalue                           # <-- !
+)
+```
 
 Contribute
 ---------------
