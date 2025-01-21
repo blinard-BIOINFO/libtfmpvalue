@@ -2,7 +2,7 @@
 
 A cmake overlay for TFMpvalue C++ library
 
-This repo serves as a wrapper for the incredibly useful `TFM-Pvalue C++ program <http://bioinfo.lifl.fr/tfm-pvalue/tfm-pvalue.php>`_. It allows users to determine score thresholds for a given transcription factor position frequency matrix associated with a specific p-value. Naturally, it can also perform the reverse, quickly calculating an accurate p-value from a score for a given motif matrix.
+This repo serves as a wrapper for the incredibly useful [TFM-Pvalue C++ program](http://bioinfo.lifl.fr/tfm-pvalue/tfm-pvalue.php). It allows users to determine score thresholds for a given transcription factor position frequency matrix associated with a specific p-value. Naturally, it can also perform the reverse, quickly calculating an accurate p-value from a score for a given motif matrix.
 
 ``libpytfmpval`` allows this functionality to be easily exploited via a cmake overlay.
 This overlay does several things : 
