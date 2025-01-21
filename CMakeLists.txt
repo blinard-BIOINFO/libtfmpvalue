@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 project(TFM-Pvalue LANGUAGES CXX VERSION 1.00)
 set (CMAKE_CXX_STANDARD 11)
 
-option(BUILD_TEST "Run tests" ON)
+option(BUILD_TFMPVALUE_TEST "Run TFMPVALUE tests" ON)
 
 add_compile_options(
     -O3
@@ -90,7 +90,7 @@ target_compile_definitions(
 ########################
 ## TESTS
 
-if (BUILD_TEST)
+if (BUILD_TFMPVALUE_TEST)
     enable_testing()
 
     add_test(
@@ -112,4 +112,4 @@ if (BUILD_TEST)
             $<TARGET_FILE:TFMpvalue-distrib> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -S 9 -G 1e-5
     )
 
-endif(BUILD_TEST)
+endif(BUILD_TFMPVALUE_TEST)
