@@ -9,9 +9,9 @@ unset(RUN_TFMPVALUE_TESTS CACHE)
 
 ########################
 ### modifiable options
-option(DEBUG_TFMPVALUE "No optimisations and all warnings" OFF)
-option(BUILD_TFMPVALUE_BINARIES "Build binary commands (pv2sc,sc2pv,...)" OFF)
-option(RUN_TFMPVALUE_TESTS "Run tests" OFF)
+option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" OFF)
+option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" OFF)
+option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" OFF)
 ### modifiable options
 ########################
 
