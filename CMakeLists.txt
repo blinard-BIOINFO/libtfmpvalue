@@ -25,7 +25,7 @@ add_library(
 ########################
 ## EXECUTABLES
 
-# applies to all following targets
+# static linking applies to all following targets
 link_libraries(
         tfmpvalue
 )
