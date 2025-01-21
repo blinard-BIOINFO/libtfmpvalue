@@ -10,7 +10,7 @@ This overlay does several things :
   - package command-lines can be compiled via dedicated targets
   - tests from the original packages are implemented as cmake tests
 
-Original sources can be found at `here <http://pytfmpval.readthedocs.io/en/latest/>`_.
+Original sources can be found at http://bioinfo.lifl.fr/tfm-pvalue/tfm-pvalue.php.
 
 **This project has been archived and is provided as-is, with no additional support or development.**
 
