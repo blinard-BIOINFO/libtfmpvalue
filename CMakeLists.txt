@@ -9,9 +9,9 @@ unset(RUN_TFMPVALUE_TESTS CACHE)
 
 ########################
 ### modifiable options
-option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" OFF)
-option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" OFF)
-option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" OFF)
+option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" ON)
+option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" ON)
+option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" ON)
 ### modifiable options
 ########################
 
@@ -40,7 +40,7 @@ add_library(
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/ParseException.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/FileException.cpp
-)
+        src/Parsers.cpp include/Parsers.h)
 
 ########################
 ## EXECUTABLES
@@ -55,7 +55,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-pv2sc
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-    )
+            src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-pv2sc
             PUBLIC
@@ -66,7 +66,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-sc2pv
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-    )
+            src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-sc2pv
             PUBLIC
@@ -77,7 +77,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-distrib
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-    )
+            src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-distrib
             PUBLIC
@@ -88,7 +88,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-fastpvalue
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-    )
+            src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-fastpvalue
             PUBLIC
@@ -99,7 +99,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-lazydistrib
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-    )
+            src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-lazydistrib
             PUBLIC
@@ -113,6 +113,10 @@ endif(BUILD_TFMPVALUE_BINARIES)
 
 if (RUN_TFMPVALUE_TESTS)
     enable_testing()
+    add_compile_definitions(
+        PUBLIC
+        VERBOSE=1
+    )
 
     add_test(
             NAME
@@ -131,6 +135,12 @@ if (RUN_TFMPVALUE_TESTS)
             distrib
             COMMAND
             $<TARGET_FILE:TFMpvalue-distrib> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -S 9 -G 1e-5
+    )
+    add_test(
+            NAME
+            fastpvalue
+            COMMAND
+            $<TARGET_FILE:TFMpvalue-fastpvalue> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -G 0.1
     )
 
 endif(RUN_TFMPVALUE_TESTS)

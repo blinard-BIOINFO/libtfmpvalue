@@ -20,6 +20,7 @@
 
 #include "../include/Matrix.h"
 #include "../include/ArgumentException.h"
+#include "../include/Parsers.h"
 
 using namespace std;
 
@@ -39,7 +40,6 @@ using namespace std;
 #ifdef VERBOSE
 #define MEMORYCOUNT
 #endif
-
 map<char,int> OPTIONS;
 static string REQUIRED[6] = { "a:t:c:g:m:p:", "a:t:c:g:m:s:" , "a:c:t:g:m:", "a:c:t:g:m:s:S:G:", "a:c:t:g:m:s:G:", "a:c:t:g:m:p:G:" };
 static string OPTIONAL[6] = { "whi", "wh", "whG:", "wh", "wh", "wh" };
@@ -49,7 +49,7 @@ void stop () {
   getline(cin,str);
 }
 
-void enumScoreFloatPvalue (Matrix *m, int pos, double score, map<double,int> *t, long long *nbocc, long long pval) {
+void enumScoreFloatPvalue (Matrix *m, int pos, double score, map<double,int> *t, int64_t *nbocc, int64_t pval) {
   
   if (*nbocc < pval) {
     if (pos == m->length) {
@@ -74,7 +74,7 @@ void enumScoreFloat (Matrix *m, int pos, double score, map<double,int> *t) {
   }
 }
 
-void enumScore (Matrix *m, int pos, long long score, map<long long,int>*t) {
+void enumScore (Matrix *m, int pos, int64_t score, map<int64_t,int>*t) {
   
   if (pos == m->length) {
     (*t)[score] += 1;
@@ -90,12 +90,12 @@ void enumScore (Matrix *m, int pos, long long score, map<long long,int>*t) {
  * LAZY DISTRIBUTION
  */
 
-double _beckstette (Matrix m, map<long long, double> **nbOcc, map<long long, double> **pbuf, int pos, long long score, long long d);
+double _beckstette (Matrix m, map<int64_t, double> **nbOcc, map<int64_t, double> **pbuf, int pos, int64_t score, int64_t d);
 
-double _beckstettePbuf (Matrix m, map<long long, double> **nbOcc, map<long long, double> **pbuf, int pos, long long score, long long d) {
+double _beckstettePbuf (Matrix m, map<int64_t, double> **nbOcc, map<int64_t, double> **pbuf, int pos, int64_t score, int64_t d) {
   //cout << "d=" << d << " Pbuf_" << pos << " (" << score << ") = ";
   if (pos == -1) { return 0; }
-  map<long long,double>::iterator iterPbuf;
+  map<int64_t,double>::iterator iterPbuf;
   iterPbuf = (*pbuf)[pos].find(score);
   double nb;
   if (iterPbuf == ((*pbuf)[pos]).end()) {
@@ -106,7 +106,7 @@ double _beckstettePbuf (Matrix m, map<long long, double> **nbOcc, map<long long,
   // compute Pbuf[pos][score]
   for (int k = 0; k < 4; k++) {
     if (m.matInt[k][pos] < m.maxScoreColumn[pos] - d) {
-      long long s = score - m.matInt[k][pos];
+      int64_t s = score - m.matInt[k][pos];
       //cout << "(" << k << "," << pos << ")" << "->" << matInt[k][pos] << " ";
       if (s <= m.bestScore[pos-1] && s >= 0) {
         nb += _beckstette(m,nbOcc,pbuf,pos-1,s,d) * m.background[k];
@@ -117,23 +117,23 @@ double _beckstettePbuf (Matrix m, map<long long, double> **nbOcc, map<long long,
   return nb;
 }
 
-double _beckstette (Matrix m, map<long long, double> **nbOcc, map<long long, double> **pbuf, int pos, long long score, long long d) {
+double _beckstette (Matrix m, map<int64_t, double> **nbOcc, map<int64_t, double> **pbuf, int pos, int64_t score, int64_t d) {
   //cout << "Q_" << pos << " (" << score << ")" << endl;
   if (score < 0 || pos == -1) {
     if (score == 0) return 1;
     else return 0;
   }
-  map<long long ,double>::iterator iterNbOcc;
+  map<int64_t ,double>::iterator iterNbOcc;
   iterNbOcc = (*nbOcc)[pos].find(score);
   if (iterNbOcc == ((*nbOcc)[pos]).end()) {
     // first compute pbuf
     double nb = _beckstettePbuf(m,nbOcc,pbuf,pos,score,d);
-    //      long long nb = (*pbuf)[pos][score];
+    //      int64_t nb = (*pbuf)[pos][score];
     //cout << nb << endl;
     // then compute NbOcc
     for (int k = 0; k < 4; k++) {
       if (m.matInt[k][pos] >= m.maxScoreColumn[pos] - d) {
-        long long s = score - m.matInt[k][pos];
+        int64_t s = score - m.matInt[k][pos];
         if (s <= m.bestScore[pos-1] && s >= 0) {
           nb += _beckstette(m,nbOcc,pbuf,pos-1,s,d) * m.background[k];
         }
@@ -147,8 +147,8 @@ double _beckstette (Matrix m, map<long long, double> **nbOcc, map<long long, dou
 void testLazyDistrib (Matrix m, double granularity, double requestedPvalue) {
 
 #ifdef MEMORYCOUNT
-  long long totalSize = 0;
-  long long totalOp = 0;
+  int64_t totalSize = 0;
+  int64_t totalOp = 0;
 #endif
 
 
@@ -157,10 +157,10 @@ void testLazyDistrib (Matrix m, double granularity, double requestedPvalue) {
 #endif
 
   m.computesIntegerMatrix(granularity,true);
-  map<long long, double> *nbOcc = new map<long long, double> [m.length+1];
-  map<long long, double> *pbuf = new map<long long, double> [m.length+1];
-  long long score = m.maxScore+ceil(m.errorMax);
-  long long d = 0;
+  map<int64_t, double> *nbOcc = new map<int64_t, double> [m.length+1];
+  map<int64_t, double> *pbuf = new map<int64_t, double> [m.length+1];
+  int64_t score = m.maxScore+ceil(m.errorMax);
+  int64_t d = 0;
   double pv = 0;
   nbOcc[m.length][score] = pv;
   while (pv <= requestedPvalue) {
@@ -213,12 +213,12 @@ void testFastPvalue (Matrix m, double granularity, double score) {
 #endif
 
 #ifdef MEMORYCOUNT
-  long long totalSize = 0;
-  long long totalOp = 0;
+  int64_t totalSize = 0;
+  int64_t totalOp = 0;
 #endif
 
   m.computesIntegerMatrix(granularity,true);
-  double pvalue = m.fastPvalue(&m,(long long)(score * m.granularity + m.offset));
+  double pvalue = m.fastPvalue(&m,(int64_t)(score * m.granularity + m.offset));
 
   if (OPTIONS['h']) {
     cout << "Score          : " << score << endl;
@@ -247,15 +247,15 @@ void testScoreToPvalue (Matrix m, double initialGranularity, double requestedSco
 #endif
   
 #ifdef MEMORYCOUNT
-  long long totalSize = 0;
-  long long totalOp = 0;
+  int64_t totalSize = 0;
+  int64_t totalOp = 0;
 #endif
   
-  long long max;
-  long long min;
+  int64_t max;
+  int64_t min;
   double ppv;
   double pv;
-  long long score;
+  int64_t score;
   
   for (double granularity = initialGranularity; granularity >= maxGranularity; granularity /= 10) {
 #ifdef VERBOSE
@@ -333,24 +333,24 @@ void testScoreToPvalue (Matrix m, double initialGranularity, double requestedSco
 }
 
 
-void testPvalueToScore (Matrix m, double initialGranularity, double requestedPvalue, bool forcedGranularity = false, double maxGranularity = 1e-10, bool sortColumns = false, long long decrgr = 10) {
+void testPvalueToScore (Matrix m, double initialGranularity, double requestedPvalue, bool forcedGranularity = false, double maxGranularity = 1e-10, bool sortColumns = false, int64_t decrgr = 10) {
 
 #ifdef VERBOSE
   cerr << "### PvalueToScore (pv  " << requestedPvalue << ") #########################################" << endl;
 #endif
   
 #ifdef MEMORYCOUNT
-  long long totalSize;
-  long long totalOp;
+  int64_t totalSize;
+  int64_t totalOp;
   totalSize = 0;
   totalOp = 0;
 #endif
   
   m.computesIntegerMatrix(initialGranularity);
-  long long max = m.maxScore+ceil(m.errorMax+0.5);
-  long long min = m.minScore;
+  int64_t max = m.maxScore+ceil(m.errorMax+0.5);
+  int64_t min = m.minScore;
   double pv;
-  long long score;
+  int64_t score;
   
   for (double granularity = initialGranularity; granularity >= maxGranularity; granularity /= decrgr) {
     
@@ -435,8 +435,11 @@ void testPvalueToScore (Matrix m, double initialGranularity, double requestedPva
 
 
 void testDistrib(Matrix m, double granularity, double min, double max) {
-  m.computesIntegerMatrix(granularity);
-  m.showDistrib(min*m.granularity+m.offset,max*m.granularity+m.offset);  
+    m.computesIntegerMatrix(granularity);
+    if (OPTIONS['h']) {
+        cout << "Scores and p-values between " << min << " and " << max << endl;
+    }
+    m.showDistrib(min*m.granularity+m.offset,max*m.granularity+m.offset);
 }
 
 void usage (char * const argv[]) {
@@ -489,8 +492,8 @@ void usage (char * const argv[]) {
   cout << endl;
   cout << "  -s : score threshold" << endl;
   cout << endl;
-//  cout << "  -G : granularity for integer matrix (a floating number)" << endl;
-//  cout << endl;
+  cout << "  -G : granularity for integer matrix (a floating number)" << endl;
+  cout << endl;
 }
 
 void arguments (int argc, char * const argv[]) {
@@ -516,7 +519,7 @@ void arguments (int argc, char * const argv[]) {
 
 
 
-int main (int argc, char * const argv[]) {
+int main (int argc, char *argv[]) {
   
   try {
     arguments(argc,argv);
@@ -525,99 +528,105 @@ int main (int argc, char * const argv[]) {
     exit(1);
   }
   
-  
-  
-  Matrix m(atof(argv[OPTIONS['a']]),atof(argv[OPTIONS['c']]),atof(argv[OPTIONS['g']]),atof(argv[OPTIONS['t']])); 
-  
-  try {
+  //parse
+    try {
 #ifndef JASPAR
-    m.readHorizontalMatrix(argv[OPTIONS['m']]);
+        auto m = Parsers::readHorizontalMatrix(argv[OPTIONS['m']]);
 #else
-    m.readJasparMatrix(argv[OPTIONS['m']]);
-#endif   
-  } catch (FileException *e) {
-    cerr << "Unable to open/read " << argv[OPTIONS['m']] << endl;
-    exit(2);
-  } catch (ParseException *e) {
-    cerr << "The matrix " << argv[1] << " seems to be in a wrong format. The format of the matrix file is : " << endl;
-#ifndef JASPAR
-    cout << "comment on the first line" << endl;
-    cout << "A| sc1A sc2A sc3A ..." << endl;
-    cout << "C| sc1C sc2C sc3C ..." << endl;
-    cout << "G| sc1G sc2G sc3G ..." << endl;
-    cout << "T| sc1T sc2T sc3T ..." << endl;
-#else
-    cout << "sc1A sc2A sc3A ..." << endl;
-    cout << "sc1C sc2C sc3C ..." << endl;
-    cout << "sc1G sc2G sc3G ..." << endl;
-    cout << "sc1T sc2T sc3T ..." << endl;
-#endif  
-    cout << endl;
-    exit(2);
-  }
+        auto m = Parsers::readJasparMatrix(argv[OPTIONS['m']]);
+#endif
+
+    m.background[0] = atof(argv[OPTIONS['a']]);
+    m.background[1] = atof(argv[OPTIONS['c']]);
+    m.background[2] = atof(argv[OPTIONS['g']]);
+    m.background[3] = atof(argv[OPTIONS['t']]);
+
+
   
-  if (OPTIONS['h']) {
-    cout << "Matrix length  : " << m.length << endl;
-  } else {
-    if (PROGRAM != DISTRIB) {
-      cout << m.length << " ";
-    }
-  }
-  
-  if (!OPTIONS['w']) {
-    m.toLogOddRatio();
-  }
-  
-  
-  float start = clock();
-  switch (PROGRAM) {
-    case PV2SC :
-      testPvalueToScore(m,0.1,(atof(argv[OPTIONS['p']])));
-      break;
-    case SC2PV :
-      testScoreToPvalue(m,0.1,atof(argv[OPTIONS['s']]));
-      break;
-    case ENUMSC :
-    {
-      long long nbsc = 0;
-      if (OPTIONS['G']) {
-        m.computesIntegerMatrix(atof(argv[OPTIONS['G']]));
-        map<long long,int> t;
-        enumScore(&m,0,0,&t);
-        nbsc = t.size();
-      } else {
-        map<double,int> t;
-        //        long int sum = 0;      
-        enumScoreFloat(&m,0,0,&t);
-        /*
-         map<double,int>::reverse_iterator riter = t.rbegin();
-         while (riter->first >= atof(argv[3]) && riter != t.rend()) {
-           sum += riter->second;
-           riter++;
-         }
-         */
-        nbsc = t.size();
-      }
       if (OPTIONS['h']) {
-        cout << "Number of different scores = " << nbsc << endl;
-        cout << "Number of different words  = " << (long long)(pow(4.0,m.length)) << endl;
-        
+        cout << "Matrix length  : " << m.length << endl;
       } else {
-        cout << nbsc << " " << (long long)(pow(4.0,m.length)) << endl;
+        if (PROGRAM != DISTRIB) {
+          cout << m.length << " ";
+        }
       }
+
+      if (!OPTIONS['w']) {
+        m.toLogOddRatio();
+      }
+
+
+      float start = clock();
+      switch (PROGRAM) {
+        case PV2SC :
+          testPvalueToScore(m,0.1,(atof(argv[OPTIONS['p']])));
+          break;
+        case SC2PV :
+          testScoreToPvalue(m,0.1,atof(argv[OPTIONS['s']]));
+          break;
+        case ENUMSC :
+        {
+          int64_t nbsc = 0;
+          if (OPTIONS['G']) {
+            m.computesIntegerMatrix(atof(argv[OPTIONS['G']]));
+            map<int64_t,int> t;
+            enumScore(&m,0,0,&t);
+            nbsc = t.size();
+          } else {
+            map<double,int> t;
+            //        long int sum = 0;
+            enumScoreFloat(&m,0,0,&t);
+            /*
+             map<double,int>::reverse_iterator riter = t.rbegin();
+             while (riter->first >= atof(argv[3]) && riter != t.rend()) {
+               sum += riter->second;
+               riter++;
+             }
+             */
+            nbsc = t.size();
+          }
+          if (OPTIONS['h']) {
+            cout << "Number of different scores = " << nbsc << endl;
+            cout << "Number of different words  = " << (int64_t)(pow(4.0,m.length)) << endl;
+
+          } else {
+            cout << nbsc << " " << (int64_t)(pow(4.0,m.length)) << endl;
+          }
+        }
+          break;
+        case DISTRIB :
+          testDistrib(m,atof(argv[OPTIONS['G']]),atof(argv[OPTIONS['s']]),atof(argv[OPTIONS['S']]));
+          break;
+        case FASTPVALUE:
+          testFastPvalue(m,atof(argv[OPTIONS['G']]),atof(argv[OPTIONS['s']]));
+          break;
+        case LAZY:
+          testLazyDistrib(m,atof(argv[OPTIONS['G']]),atof(argv[OPTIONS['p']]));
+          break;
+      }
+      cout << "TIME:" << (clock()-start)/CLOCKS_PER_SEC;
+
+
+    } catch (FileException *e) {
+        cerr << "Unable to open/read " << argv[OPTIONS['m']] << endl;
+        exit(2);
+    } catch (ParseException *e) {
+        cerr << "The matrix " << argv[1] << " seems to be in a wrong format. The format of the matrix file is : " << endl;
+#ifndef JASPAR
+        cout << "comment on the first line" << endl;
+        cout << "A| sc1A sc2A sc3A ..." << endl;
+        cout << "C| sc1C sc2C sc3C ..." << endl;
+        cout << "G| sc1G sc2G sc3G ..." << endl;
+        cout << "T| sc1T sc2T sc3T ..." << endl;
+#else
+        cout << "sc1A sc2A sc3A ..." << endl;
+        cout << "sc1C sc2C sc3C ..." << endl;
+        cout << "sc1G sc2G sc3G ..." << endl;
+        cout << "sc1T sc2T sc3T ..." << endl;
+#endif
+        cout << endl;
+        exit(2);
     }
-      break;
-    case DISTRIB :
-      testDistrib(m,atof(argv[OPTIONS['G']]),atof(argv[OPTIONS['s']]),atof(argv[OPTIONS['S']]));
-      break;
-    case FASTPVALUE:
-      testFastPvalue(m,atof(argv[OPTIONS['G']]),atof(argv[OPTIONS['s']]));
-      break;
-    case LAZY:
-      testLazyDistrib(m,atof(argv[OPTIONS['G']]),atof(argv[OPTIONS['p']]));
-      break;
-  }
-  cout << "TIME:" << (clock()-start)/CLOCKS_PER_SEC;
 
 return 0;
 }

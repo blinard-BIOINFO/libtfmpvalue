@@ -7,11 +7,86 @@
  *
  */
 
-#include "../include/Matrix.h"
 
 //#define PRINTVERBOSE 
 //#define SHOWCERR
 //#define VERBOSE
+
+
+#include "../include/Matrix.h"
+
+Matrix::Matrix(size_t length):
+mat(4, std::vector<int64_t>(length)),
+matInt(4, std::vector<int64_t>(length)),
+offsets(length),
+minScoreColumn(length),
+maxScoreColumn(length),
+sum(length),
+bestScore(length),
+worstScore(length)
+{
+    this->length = length;
+    granularity = 1.0;
+    offset = 0;
+}
+
+Matrix::Matrix(size_t length, double pA, double pC, double pG, double pT):
+mat(4, std::vector<int64_t>(length)),
+matInt(4, std::vector<int64_t>(length)),
+offsets(length),
+minScoreColumn(length),
+maxScoreColumn(length),
+sum(length),
+bestScore(length),
+worstScore(length){
+    this->length = length;
+    granularity = 1.0;
+    offset = 0;
+    background[0] = pA;
+    background[1] = pC;
+    background[2] = pG;
+    background[3] = pT;
+}
+
+void Matrix::toLogOddRatio () {
+    for (int p = 0; p < length; p++) {
+        double sum = mat[0][p] + mat[1][p] + mat[2][p] + mat[3][p];
+        for (int k = 0; k < 4; k++) {
+            mat[k][p] = log((mat[k][p] + 0.25) /(sum + 1)) - log (background[k]);
+        }
+    }
+#ifdef PRINTLOGRATIO
+    for (int k = 0; k < 4; k++ ) {
+      for (int i = 0 ; i < length; i++) {
+        cout << mat[k][i] << "\t";
+      }
+      cout << endl;
+    }
+#endif
+}
+
+
+// computes the complete score distribution between score min and max
+void Matrix::showDistrib (int64_t min, int64_t max) {
+    map<int64_t, double> *nbocc = calcDistribWithMapMinMax(min,max);
+    map<int64_t, double>::iterator iter;
+
+    // computes p values and stores them in nbocc[length]
+    double sum = 0;
+    map<int64_t, double>::reverse_iterator riter = nbocc[length-1].rbegin();
+    while (riter != nbocc[length-1].rend()) {
+        sum += riter->second;
+        nbocc[length][riter->first] = sum;
+        riter++;
+    }
+
+    iter = nbocc[length].begin();
+    while (iter != nbocc[length].end() && iter->first <= max) {
+        cout << (((iter->first)-offset)/granularity) << " " << (iter->second) << " " << nbocc[length-1][iter->first] << endl;
+        iter ++;
+    }
+}
+
 
 void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   double minS = 0, maxS = 0;
@@ -39,12 +114,9 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   } else {
     this->granularity = 1.0;
   }
-  
-  matInt = new long long *[length];
   for (int k = 0; k < 4; k++ ) {
-    matInt[k] = new long long[length];
     for (int p = 0 ; p < length; p++) {
-      matInt[k][p] = ROUND_TO_INT((double)(mat[k][p]*this->granularity)); 
+      matInt[k][p] = std::round((double)(mat[k][p]*this->granularity));
     }
   }
   
@@ -77,14 +149,14 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   
   if (sortColumns) {
     // sort the columns : the first column is the one with the greatest value
-    long long min = 0;
+    int64_t min = 0;
     for (int i = 0; i < length; i++) {
       for (int k = 0; k < 4; k++) {
-        min = MIN(min,matInt[k][i]);
+        min = std::min(min,matInt[k][i]);
       }
     }
     min --;
-    long long *maxs = new long long [length];
+    vector<int64_t> maxs(length);
     for (int i = 0; i < length; i++) {
       maxs[i] = matInt[0][i];
       for (int k = 1; k < 4; k++) {
@@ -93,12 +165,11 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
         }
       }
     }
-    long long **mattemp = new long long *[4];
-    for (int k = 0; k < 4; k++) {        
-      mattemp[k] = new long long [length];
-    }
+
+    std::vector<std::vector<int64_t>> mattemp(4, std::vector<int64_t>(length));
+
     for (int i = 0; i < length; i++) {
-      long long max = maxs[0];
+      int64_t max = maxs[0];
       int p = 0;
       for (int j = 1; j < length; j++) {
         if (max < maxs[j]) {
@@ -107,8 +178,8 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
         }
       }
       maxs[p] = min;
-      for (int k = 0; k < 4; k++) {        
-        mattemp[k][i] = matInt[k][p];
+      for (int k = 0; k < 4; k++) {
+          mattemp[k][i]=matInt[k][p];
       }
     }
 #ifdef PRINTVERBOSE
@@ -120,23 +191,19 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
       cout << endl;    
     }
 #endif
-    
-    for (int k = 0; k < 4; k++)  {
-      for (int i = 0; i < length; i++) {
-        matInt[k][i] = mattemp[k][i];
-      }
-    }
+
+    matInt=std::move(mattemp);
+
   }
   
   // computes offsets
   this->offset = 0;
-  offsets = new long long [length];
   for (int i = 0; i < length; i++) {
-    long long min = matInt[0][i];
+    int64_t min = matInt[0][i];
     for (int k = 1; k < 4; k++ )  {
       min = ((min < matInt[k][i])?min:(matInt[k][i]));
     }
-    offsets[i] = -min;
+    offsets.push_back(-min);
     for (int k = 0; k < 4; k++ )  {
       matInt[k][i] += offsets[i];  
     }
@@ -159,15 +226,10 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   
   
   // look for the minimum score of the matrix for each column
-  minScoreColumn = new long long [length];
-  maxScoreColumn = new long long [length];
-  sum            = new long long [length];
-  minScore = 0;
-  maxScore = 0;
   for (int i = 0; i < length; i++) {
-    minScoreColumn[i] = matInt[0][i];
-    maxScoreColumn[i] = matInt[0][i];
-    sum[i] = 0;
+    minScoreColumn.push_back(matInt[0][i]);
+    maxScoreColumn.push_back(matInt[0][i]);
+    sum.push_back(0);
     for (int k = 1; k < 4; k++ )  {
       sum[i] = sum[i] + matInt[k][i];
       if (minScoreColumn[i] > matInt[k][i]) {
@@ -188,8 +250,8 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   cout << "SCORE RANGE : " << minScore << " - " << maxScore << " : " << this->scoreRange << endl;
 #endif
   
-  bestScore = new long long[length];
-  worstScore = new long long[length];
+  //bestScore.resize(length);
+  //worstScore.resize(length);
   bestScore[length-1] = maxScore;
   worstScore[length-1] = minScore;
   for (int i = length - 2; i >= 0; i--) {
@@ -206,18 +268,18 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
 /**
 * Computes the pvalue associated with the threshold score requestedScore.
  */
-void Matrix::lookForPvalue (long long requestedScore, long long min, long long max, double *pmin, double *pmax) {
+void Matrix::lookForPvalue (int64_t requestedScore, int64_t min, int64_t max, double *pmin, double *pmax) {
   
-  map<long long, double> *nbocc = calcDistribWithMapMinMax(min,max); 
-  map<long long, double>::iterator iter;
+  map<int64_t, double> *nbocc = calcDistribWithMapMinMax(min,max); 
+  map<int64_t, double>::iterator iter;
   
 #ifdef SHOWCERR
   cerr << "  Looks for Pvalue between " << min << " and " << max << " for score " << requestedScore << endl;
 #endif
   // computes p values and stores them in nbocc[length] 
   double sum = nbocc[length][max+1];
-  long long s = max + 1;
-  map<long long, double>::reverse_iterator riter = nbocc[length-1].rbegin();
+  int64_t s = max + 1;
+  map<int64_t, double>::reverse_iterator riter = nbocc[length-1].rbegin();
   while (riter != nbocc[length-1].rend()) {
     sum += riter->second;
     if (riter->first >= requestedScore) s = riter->first;
@@ -251,18 +313,18 @@ void Matrix::lookForPvalue (long long requestedScore, long long min, long long m
 /**
 * Computes the score associated with the pvalue requestedPvalue.
  */
-long long Matrix::lookForScore (long long min, long long max, double requestedPvalue, double *rpv, double *rppv) {
+int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, double *rpv, double *rppv) {
   
-  map<long long, double> *nbocc = calcDistribWithMapMinMax(min,max); 
-  map<long long, double>::iterator iter;
+  map<int64_t, double> *nbocc = calcDistribWithMapMinMax(min,max); 
+  map<int64_t, double>::iterator iter;
 #ifdef SHOWCERR
   cerr << "  Looks for score between " << min << " and " << max << endl;
 #endif
   // computes p values and stores them in nbocc[length] 
   double sum = 0.0;
-  map<long long, double>::reverse_iterator riter = nbocc[length-1].rbegin();
-  long long alpha = riter->first+1;
-  long long alpha_E = alpha;
+  map<int64_t, double>::reverse_iterator riter = nbocc[length-1].rbegin();
+  int64_t alpha = riter->first+1;
+  int64_t alpha_E = alpha;
   nbocc[length][alpha] = 0.0;
   while (riter != nbocc[length-1].rend()) {
     sum += riter->second;
@@ -323,15 +385,15 @@ long long Matrix::lookForScore (long long min, long long max, double requestedPv
 
 // computes the distribution of scores between score min and max as the DP algrithm proceeds 
 // but instead of using a table we use a map to avoid computations for scores that cannot be reached
-map<long long, double> *Matrix::calcDistribWithMapMinMax (long long min, long long max) { 
+map<int64_t, double> *Matrix::calcDistribWithMapMinMax (int64_t min, int64_t max) { 
   
   // maps for each step of the computation
   // nbocc[length] stores the pvalue
   // nbocc[pos] for pos < length stores the qvalue
-  map<long long, double> *nbocc = new map<long long, double> [length+1];
-  map<long long, double>::iterator iter;
+  map<int64_t, double> *nbocc = new map<int64_t, double> [length+1];
+  map<int64_t, double>::iterator iter;
   
-  long long *maxs = new long long[length+1]; // @ pos i maximum score reachable with the suffix matrix from i to length-1
+  int64_t *maxs = new int64_t[length+1]; // @ pos i maximum score reachable with the suffix matrix from i to length-1
   
 #ifdef VERBOSE    
   cerr << "  Calc distrib between " << min << " and " << max << endl;
@@ -355,7 +417,7 @@ map<long long, double> *Matrix::calcDistribWithMapMinMax (long long min, long lo
     iter = nbocc[pos-1].begin();
     while (iter != nbocc[pos-1].end()) {
       for (int k = 0; k < 4; k++) {
-        long long sc = iter->first + matInt[k][pos];
+        int64_t sc = iter->first + matInt[k][pos];
         if (sc+maxs[pos+1] >= min) {
           // the score min can be reached
           if (sc > max) {
@@ -384,15 +446,15 @@ map<long long, double> *Matrix::calcDistribWithMapMinMax (long long min, long lo
 
 
 
-long long Matrix::fastPvalue (Matrix *m, long long alpha) {
+int64_t Matrix::fastPvalue (Matrix *m, int64_t alpha) {
   
   
-  map<long long, long long> *q = new map<long long, long long> [m->length+1];
-  map<long long, long long>::iterator iter;
+  map<int64_t, int64_t> *q = new map<int64_t, int64_t> [m->length+1];
+  map<int64_t, int64_t>::iterator iter;
   
-  long long P = 0;
+  int64_t P = 0;
   
-  long long *maxm = new long long[m->length+1]; // @ pos i maximum score reachable with the suffix matrix from i to length-1
+  int64_t *maxm = new int64_t[m->length+1]; // @ pos i maximum score reachable with the suffix matrix from i to length-1
   
   maxm[m->length] = 0;
   for (int i = m->length-1; i >= 0; i--) {
@@ -413,10 +475,10 @@ long long Matrix::fastPvalue (Matrix *m, long long alpha) {
     iter = q[pos-1].begin();
     while (iter != q[pos-1].end()) {
       for (int k = 0; k < 4; k++) {
-        long long scm = iter->first + m->matInt[k][pos];
+        int64_t scm = iter->first + m->matInt[k][pos];
         if (scm > alpha) {
           //cout << "Update P from " << P;
-          P += iter->second * (long long)pow(4.0,m->length-pos-1); 
+          P += iter->second * (int64_t)pow(4.0,m->length-pos-1); 
           //cout << " to P " << P << endl;
         } else if (scm + maxm[pos+1] > alpha) {
           q[pos][scm] += iter->second; 
