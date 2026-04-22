@@ -50,9 +50,9 @@ worstScore(length){
 
 void Matrix::toLogOddRatio () {
     for (int p = 0; p < length; p++) {
-        double sum = mat[0][p] + mat[1][p] + mat[2][p] + mat[3][p];
+        auto summ = mat[0][p] + mat[1][p] + mat[2][p] + mat[3][p];
         for (int k = 0; k < 4; k++) {
-            mat[k][p] = log((mat[k][p] + 0.25) /(sum + 1)) - log (background[k]);
+            mat[k][p] = static_cast<int64_t>(log((static_cast<double>(mat[k][p]) + 0.25) / (static_cast<double>(summ) + 1) ) - log (background[k]));
         }
     }
 #ifdef PRINTLOGRATIO
@@ -116,7 +116,7 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   }
   for (int k = 0; k < 4; k++ ) {
     for (int p = 0 ; p < length; p++) {
-      matInt[k][p] = std::round((double)(mat[k][p]*this->granularity));
+      matInt[k][p] = std::floor((static_cast<double>(mat[k][p])*this->granularity));
     }
   }
   
@@ -203,7 +203,7 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
     for (int k = 1; k < 4; k++ )  {
       min = ((min < matInt[k][i])?min:(matInt[k][i]));
     }
-    offsets.push_back(-min);
+    offsets[i] = -min;
     for (int k = 0; k < 4; k++ )  {
       matInt[k][i] += offsets[i];  
     }
@@ -227,8 +227,8 @@ void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   
   // look for the minimum score of the matrix for each column
   for (int i = 0; i < length; i++) {
-    minScoreColumn.push_back(matInt[0][i]);
-    maxScoreColumn.push_back(matInt[0][i]);
+    minScoreColumn[i] = matInt[0][i];
+    maxScoreColumn[i] = matInt[0][i];
     sum.push_back(0);
     for (int k = 1; k < 4; k++ )  {
       sum[i] = sum[i] + matInt[k][i];
