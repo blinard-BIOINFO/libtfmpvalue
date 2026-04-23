@@ -37,7 +37,7 @@ public:
     int64_t totalMapSize=0;
     int64_t totalOp=0;
 
-    vector<vector<int64_t>> mat; // the matrix as it is stored in the matrix file
+    vector<vector<double>> mat; // the matrix as it is stored in the matrix file
     int length=0;
     double granularity; // the real granularity used, greater than 1
     vector<vector<int64_t>> matInt; // the discrete matrix with offset

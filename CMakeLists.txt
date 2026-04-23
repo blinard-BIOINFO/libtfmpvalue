@@ -6,17 +6,19 @@ set (CMAKE_CXX_STANDARD 11)
 unset(DEBUG_TFMPVALUE CACHE)
 unset(BUILD_TFMPVALUE_BINARIES CACHE)
 unset(RUN_TFMPVALUE_TESTS CACHE)
+unset(RUN_TFMPVALUE_TESTS_VERBOSE CACHE)
 
 ########################
 ### modifiable options
 option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" ON)
 option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" ON)
 option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" ON)
+option(RUN_TFMPVALUE_TESTS_VERBOSE "Run libtfmpvalue cmake tests, with high verbosity" OFF)
 ### modifiable options
 ########################
 
 if(RUN_TFMPVALUE_TESTS)
-    option(BUILD_TFMPVALUE_BINARIES "Build binary commands (pv2sc,sc2pv,...)" ON)
+    option(BUILD_TFMPVALUE_BINARIES ON)
 endif(RUN_TFMPVALUE_TESTS)
 
 if (DEBUG_TFMPVALUE)
@@ -113,22 +115,37 @@ endif(BUILD_TFMPVALUE_BINARIES)
 
 if (RUN_TFMPVALUE_TESTS)
     enable_testing()
-    add_compile_definitions(
-        PUBLIC
-        VERBOSE=1
-    )
+
+    if (RUN_TFMPVALUE_TESTS_VERBOSE)
+        add_compile_definitions(
+            PUBLIC
+            VERBOSE=1
+        )
+    endif(RUN_TFMPVALUE_TESTS_VERBOSE)
 
     add_test(
             NAME
             pv2sc
             COMMAND
-            $<TARGET_FILE:TFMpvalue-pv2sc> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -p 1e-5
+            $<TARGET_FILE:TFMpvalue-pv2sc> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -p 1e-5 -h
+    )
+    set_tests_properties(
+            pv2sc
+            PROPERTIES
+            PASS_REGULAR_EXPRESSION "8.77371" #score
+            PASS_REGULAR_EXPRESSION "9.99263e-06" #pvalue
     )
     add_test(
             NAME
             sc2pv
             COMMAND
-            $<TARGET_FILE:TFMpvalue-sc2pv> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8.77
+            $<TARGET_FILE:TFMpvalue-sc2pv> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8.77 -h
+    )
+    set_tests_properties(
+            sc2pv
+            PROPERTIES
+            PASS_REGULAR_EXPRESSION "8.77" #score
+            PASS_REGULAR_EXPRESSION "1.00716e-05" #pvalue
     )
     add_test(
             NAME
@@ -136,11 +153,24 @@ if (RUN_TFMPVALUE_TESTS)
             COMMAND
             $<TARGET_FILE:TFMpvalue-distrib> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -S 9 -G 1e-5
     )
+    set_tests_properties(
+            distrib
+            PROPERTIES
+            PASS_REGULAR_EXPRESSION "8.00005 3.18082e-05 2.32831e-10" #1st line of distrib output
+            PASS_REGULAR_EXPRESSION "8.00065 3.18079e-05 4.37722e-08" #2nd
+            PASS_REGULAR_EXPRESSION "8.00083 3.17642e-05 3.72529e-09" #3rd
+    )
     add_test(
             NAME
             fastpvalue
             COMMAND
-            $<TARGET_FILE:TFMpvalue-fastpvalue> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -G 0.1
+            $<TARGET_FILE:TFMpvalue-fastpvalue> -a 0.25 -t 0.25 -c 0.25 -g 0.25 -m ${CMAKE_CURRENT_SOURCE_DIR}/test/MA0045.pfm -s 8 -G 1e-5 -h
+    )
+    set_tests_properties(
+            fastpvalue
+            PROPERTIES
+            PASS_REGULAR_EXPRESSION "8" #score
+            PASS_REGULAR_EXPRESSION "136615" #pvalue
     )
 
 endif(RUN_TFMPVALUE_TESTS)

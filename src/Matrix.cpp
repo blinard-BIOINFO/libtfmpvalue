@@ -16,7 +16,7 @@
 #include "../include/Matrix.h"
 
 Matrix::Matrix(size_t length):
-mat(4, std::vector<int64_t>(length)),
+mat(4, std::vector<double>(length)),
 matInt(4, std::vector<int64_t>(length)),
 offsets(length),
 minScoreColumn(length),
@@ -31,7 +31,7 @@ worstScore(length)
 }
 
 Matrix::Matrix(size_t length, double pA, double pC, double pG, double pT):
-mat(4, std::vector<int64_t>(length)),
+mat(4, std::vector<double>(length)),
 matInt(4, std::vector<int64_t>(length)),
 offsets(length),
 minScoreColumn(length),
@@ -52,7 +52,7 @@ void Matrix::toLogOddRatio () {
     for (int p = 0; p < length; p++) {
         auto summ = mat[0][p] + mat[1][p] + mat[2][p] + mat[3][p];
         for (int k = 0; k < 4; k++) {
-            mat[k][p] = static_cast<int64_t>(log((static_cast<double>(mat[k][p]) + 0.25) / (static_cast<double>(summ) + 1) ) - log (background[k]));
+            mat[k][p] = log((static_cast<double>(mat[k][p]) + 0.25) / (static_cast<double>(summ) + 1) ) - log (background[k]);
         }
     }
 #ifdef PRINTLOGRATIO
