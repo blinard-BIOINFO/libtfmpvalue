@@ -17,6 +17,8 @@
 #include <cmath>
 #include <fstream>
 #include <cstdlib>
+#include <unordered_map>
+#include <absl/container/btree_map.h>
 
 #include "FileException.h"
 #include "ParseException.h"
@@ -76,7 +78,7 @@ public:
     * Computes the distribution of scores between score min and max as the DP algrithm proceeds
     * but instead of using a table we use a map to avoid computations for scores that cannot be reached
     */
-    std::vector<std::map<int64_t, double>> calcDistribWithMapMinMax (int64_t min, int64_t max);
+    std::vector<absl::btree_map<int64_t, double>> calcDistribWithMapMinMax (int64_t min, int64_t max);
 
 
     /**

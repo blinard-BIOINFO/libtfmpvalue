@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project(TFM-Pvalue LANGUAGES CXX VERSION 1.00)
-set (CMAKE_CXX_STANDARD 11)
+project(TFM-Pvalue LANGUAGES CXX VERSION 1.1)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF) #For absl lib, On GCC/Clang, it avoids -std=gnu++17, Instead uses -std=c++17
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
+
 
 unset(DEBUG_TFMPVALUE CACHE)
 unset(BUILD_TFMPVALUE_BINARIES CACHE)
@@ -10,7 +15,7 @@ unset(RUN_TFMPVALUE_TESTS_VERBOSE CACHE)
 
 ########################
 ### modifiable options
-option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" OFF)
+option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" ON)
 option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" OFF)
 option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" ON)
 option(RUN_TFMPVALUE_TESTS_VERBOSE "Run libtfmpvalue cmake tests, with high verbosity" OFF)
@@ -33,6 +38,22 @@ else()
 endif (DEBUG_TFMPVALUE)
 
 ########################
+## Dependency
+include(FetchContent)
+
+set(ABSL_BUILD_TESTING OFF)
+set(ABSL_ENABLE_INSTALL OFF)
+set(ABSL_USE_EXTERNAL_GOOGLETEST OFF)
+FetchContent_Declare(
+        absl
+        GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+        GIT_TAG 20260107.1
+)
+
+FetchContent_MakeAvailable(absl)
+
+
+########################
 ## LIBRARY
 
 # build a static library from core sources
@@ -42,7 +63,12 @@ add_library(
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Matrix.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/ParseException.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/FileException.cpp
-        src/Parsers.cpp include/Parsers.h)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/Parsers.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/Parsers.h)
+target_link_libraries(
+        tfmpvalue
+        PUBLIC
+        absl::btree)
 
 ########################
 ## EXECUTABLES
@@ -50,14 +76,14 @@ add_library(
 if (BUILD_TFMPVALUE_BINARIES)
     # static linking applies to all following targets
     link_libraries(
-            tfmpvalue
+        tfmpvalue
     )
 
     add_executable(
             TFMpvalue-pv2sc
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-            src/Parsers.cpp include/Parsers.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-pv2sc
             PUBLIC
@@ -68,7 +94,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-sc2pv
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-            src/Parsers.cpp include/Parsers.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-sc2pv
             PUBLIC
@@ -79,7 +105,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-distrib
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-            src/Parsers.cpp include/Parsers.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-distrib
             PUBLIC
@@ -90,7 +116,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-fastpvalue
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-            src/Parsers.cpp include/Parsers.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-fastpvalue
             PUBLIC
@@ -101,7 +127,7 @@ if (BUILD_TFMPVALUE_BINARIES)
             TFMpvalue-lazydistrib
             ${CMAKE_CURRENT_SOURCE_DIR}/src/ArgumentException.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/TFMpvalue.cpp
-            src/Parsers.cpp include/Parsers.h)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/Parsers.cpp include/Parsers.h)
     target_compile_definitions(
             TFMpvalue-lazydistrib
             PUBLIC

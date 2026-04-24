@@ -69,18 +69,17 @@ void Matrix::toLogOddRatio () {
 // computes the complete score distribution between score min and max
 void Matrix::showDistrib (int64_t min, int64_t max) {
     auto nbocc = calcDistribWithMapMinMax(min,max);
-    map<int64_t, double>::iterator iter;
 
     // computes p values and stores them in nbocc[length]
     double sum = 0;
-    map<int64_t, double>::reverse_iterator riter = nbocc[length-1].rbegin();
+    auto riter = nbocc[length-1].rbegin();
     while (riter != nbocc[length-1].rend()) {
         sum += riter->second;
         nbocc[length][riter->first] = sum;
         riter++;
     }
 
-    iter = nbocc[length].begin();
+    auto iter = nbocc[length].begin();
     while (iter != nbocc[length].end() && iter->first <= max) {
         cout << (((iter->first)-offset)/granularity) << " " << (iter->second) << " " << nbocc[length-1][iter->first] << endl;
         iter ++;
@@ -90,6 +89,7 @@ void Matrix::showDistrib (int64_t min, int64_t max) {
 
 void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   double minS = 0, maxS = 0;
+  double scoreRange;
 
   // computes precision
   for (int i = 0; i < length; i++) {
@@ -288,7 +288,7 @@ void Matrix::lookForPvalue (int64_t requestedScore, int64_t min, int64_t max, do
   
   auto iter = nbocc[length].find(s);
   while (iter != nbocc[length].begin() && iter->first >= s - errorMax) {
-    iter--;      
+    iter--;
   }
   //cout << "   s - E found : " << iter->first << endl;
   
@@ -313,13 +313,12 @@ void Matrix::lookForPvalue (int64_t requestedScore, int64_t min, int64_t max, do
 int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, double *rpv, double *rppv) {
   
   auto nbocc = calcDistribWithMapMinMax(min,max);
-  map<int64_t, double>::iterator iter;
 #ifdef SHOWCERR
   cerr << "  Looks for score between " << min << " and " << max << endl;
 #endif
   // computes p values and stores them in nbocc[length] 
   double sum = 0.0;
-  map<int64_t, double>::reverse_iterator riter = nbocc[length-1].rbegin();
+  auto riter = nbocc[length-1].rbegin();
   int64_t alpha = riter->first+1;
   int64_t alpha_E = alpha;
   nbocc[length][alpha] = 0.0;
@@ -381,14 +380,14 @@ int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, 
 
 // computes the distribution of scores between score min and max as the DP algrithm proceeds 
 // but instead of using a table we use a map to avoid computations for scores that cannot be reached
-std::vector<std::map<int64_t, double>> Matrix::calcDistribWithMapMinMax (int64_t min, int64_t max) {
+std::vector<absl::btree_map<int64_t, double>> Matrix::calcDistribWithMapMinMax (int64_t min, int64_t max) {
   
   // maps for each step of the computation
   // nbocc[length] stores the pvalue
   // nbocc[pos] for pos < length stores the qvalue
-  std::vector<std::map<int64_t, double>> nbocc(length + 1);
+  vector<absl::btree_map<int64_t, double>> nbocc(length + 1);
 
-  vector<int64_t> maxs(length+1); // @ pos i maximum score reachable with the suffix matrix from i to length-1
+  vector<int64_t> maxs(length + 1);; // @ pos i maximum score reachable with the suffix matrix from i to length-1
   
 #ifdef VERBOSE    
   cerr << "  Calc distrib between " << min << " and " << max << endl;
@@ -400,19 +399,20 @@ std::vector<std::map<int64_t, double>> Matrix::calcDistribWithMapMinMax (int64_t
   }
   
   // initializes the map at position 0
-  auto& nbocc_zero = nbocc[0];
   for (int k = 0; k < 4; k++) {
     if (matInt[k][0]+maxs[1] >= min) {
-        nbocc_zero[matInt[k][0]] += background[k];
+      nbocc[0][matInt[k][0]] += background[k];
     }
   }
   
   // computes q values for scores greater or equal than min
-  auto nbocc_l1 = nbocc[length-1].emplace(std::pair<int64_t,double>(max+1,0.0));
+  //nbocc[length-1][max+1] = 0.0;
+  auto m = nbocc[length-1];
+  auto maxp1 = m.emplace(max+1,0).first;
   for (int pos = 1; pos < length; pos++) {
     auto iter = nbocc[pos-1].begin();
     while (iter != nbocc[pos-1].end()) {
-      auto& nbocc_p1 = nbocc[pos-1][iter->first];
+      auto nbocc_p1 = nbocc[pos-1].find(iter->first);
       for (int k = 0; k < 4; k++) {
         int64_t sc = iter->first + matInt[k][pos];
         if (sc+maxs[pos+1] >= min) {
@@ -420,11 +420,11 @@ std::vector<std::map<int64_t, double>> Matrix::calcDistribWithMapMinMax (int64_t
           if (sc > max) {
             // the score will be greater than max for all suffixes
             //nbocc[length-1][max+1] += nbocc[pos-1][iter->first] * background[k]; //pow(4,length-pos-1) ;
-            nbocc_l1.first->second += nbocc_p1 * background[k]; //pow(4,length-pos-1) ;
+            maxp1->second += nbocc_p1->second * background[k]; //pow(4,length-pos-1) ;
             totalOp++;
           } else {              
             //nbocc[pos][sc] += nbocc[pos-1][iter->first] * background[k];
-            nbocc[pos][sc] += nbocc_p1 * background[k];
+            nbocc[pos][sc] += nbocc_p1->second * background[k];
             totalOp++;
           }
         } 
@@ -444,11 +444,10 @@ std::vector<std::map<int64_t, double>> Matrix::calcDistribWithMapMinMax (int64_t
 
 
 int64_t Matrix::fastPvalue (Matrix *m, int64_t alpha) {
-  
-  
-  map<int64_t, int64_t> *q = new map<int64_t, int64_t> [m->length+1];
-  map<int64_t, int64_t>::iterator iter;
-  
+
+
+  vector<absl::btree_map<int64_t, int64_t>> q(m->length+1);
+
   int64_t P = 0;
   
   int64_t *maxm = new int64_t[m->length+1]; // @ pos i maximum score reachable with the suffix matrix from i to length-1
@@ -469,7 +468,7 @@ int64_t Matrix::fastPvalue (Matrix *m, int64_t alpha) {
   
   // computes q values for scores strictly greater than alpha
   for (int pos = 1; pos < m->length; pos++) {
-    iter = q[pos-1].begin();
+    auto iter = q[pos-1].begin();
     while (iter != q[pos-1].end()) {
       for (int k = 0; k < 4; k++) {
         int64_t scm = iter->first + m->matInt[k][pos];

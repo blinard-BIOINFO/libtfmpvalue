@@ -500,11 +500,13 @@ void arguments (int argc, char * const argv[]) {
    // parse options
    char option;
    map<char,bool> opt;
-   char options[REQUIRED[PROGRAM].length()+OPTIONAL[PROGRAM].length()+1];
+   auto len = REQUIRED[PROGRAM].length()+OPTIONAL[PROGRAM].length();
+   vector<char> options(len);
    for (int i = 0; i < REQUIRED[PROGRAM].length(); i++) { options[i] = REQUIRED[PROGRAM][i]; }
    for (int i = 0; i < OPTIONAL[PROGRAM].length(); i++) { options[i+REQUIRED[PROGRAM].length()] = OPTIONAL[PROGRAM][i]; }  
-   options[REQUIRED[PROGRAM].length()+OPTIONAL[PROGRAM].length()+1] = '\0';
-  while (((option = getopt(argc,argv,options)) != EOF)) {
+   options.push_back('\0');
+   cout << "";
+  while ((option = getopt(argc,argv,options.data())) != EOF) {
     if (option == '?') {
       throw new ArgumentException("Bad argument");
     } 
