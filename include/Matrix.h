@@ -76,7 +76,7 @@ public:
     * Computes the distribution of scores between score min and max as the DP algrithm proceeds
     * but instead of using a table we use a map to avoid computations for scores that cannot be reached
     */
-    map<int64_t, double> *calcDistribWithMapMinMax (int64_t min, int64_t max);
+    std::vector<std::map<int64_t, double>> calcDistribWithMapMinMax (int64_t min, int64_t max);
 
 
     /**
