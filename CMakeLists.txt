@@ -10,15 +10,15 @@ unset(RUN_TFMPVALUE_TESTS_VERBOSE CACHE)
 
 ########################
 ### modifiable options
-option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" ON)
-option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" ON)
+option(DEBUG_TFMPVALUE "If on, no optimisations and all warnings" OFF)
+option(BUILD_TFMPVALUE_BINARIES "Build binaries on top of library (pv2sc,sc2pv,...)" OFF)
 option(RUN_TFMPVALUE_TESTS "Run libtfmpvalue cmake tests" ON)
-option(RUN_TFMPVALUE_TESTS_VERBOSE "Run libtfmpvalue cmake tests, with high verbosity" ON)
+option(RUN_TFMPVALUE_TESTS_VERBOSE "Run libtfmpvalue cmake tests, with high verbosity" OFF)
 ### modifiable options
 ########################
 
 if(RUN_TFMPVALUE_TESTS)
-    option(BUILD_TFMPVALUE_BINARIES ON)
+    set(BUILD_TFMPVALUE_BINARIES ON)
 endif(RUN_TFMPVALUE_TESTS)
 
 if (DEBUG_TFMPVALUE)
