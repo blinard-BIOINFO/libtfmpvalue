@@ -72,16 +72,17 @@ void Matrix::showDistrib (int64_t min, int64_t max) {
 
     // computes p values and stores them in nbocc[length]
     double sum = 0;
-    auto riter = nbocc[length-1].rbegin();
-    while (riter != nbocc[length-1].rend()) {
-        sum += riter->second;
-        nbocc[length][riter->first] = sum;
-        riter++;
+
+    auto rit = nbocc[length-1 - 1].rbegin();
+    while (rit != nbocc[length-1 - 1].rend()) {
+      sum += *(rit->second);
+      *(nbocc[length][rit->first]) = sum;
+      ++rit;
     }
 
     auto iter = nbocc[length].begin();
     while (iter != nbocc[length].end() && iter->first <= max) {
-        cout << (((iter->first)-offset)/granularity) << " " << (iter->second) << " " << nbocc[length-1][iter->first] << endl;
+        cout << (((iter->first)-offset)/granularity) << " " << *(iter->second) << " " << *(nbocc[length-1][iter->first]) << endl;
         iter ++;
     }
 }
@@ -89,7 +90,7 @@ void Matrix::showDistrib (int64_t min, int64_t max) {
 
 void Matrix::computesIntegerMatrix (double granularity, bool sortColumns) {
   double minS = 0, maxS = 0;
-  double scoreRange;
+  //double scoreRange;
 
   // computes precision
   for (int i = 0; i < length; i++) {
@@ -275,13 +276,13 @@ void Matrix::lookForPvalue (int64_t requestedScore, int64_t min, int64_t max, do
   cerr << "  Looks for Pvalue between " << min << " and " << max << " for score " << requestedScore << endl;
 #endif
   // computes p values and stores them in nbocc[length] 
-  double sum = nbocc[length][max+1];
+  double sum = *nbocc[length][max+1];
   int64_t s = max + 1;
   auto riter = nbocc[length-1].rbegin();
   while (riter != nbocc[length-1].rend()) {
-    sum += riter->second;
+    sum += *riter->second;
     if (riter->first >= requestedScore) s = riter->first;
-    nbocc[length][riter->first] = sum;
+    *nbocc[length][riter->first] = sum;
     riter++;      
   }
   //cout << "   s found : " << s << endl;
@@ -299,8 +300,8 @@ void Matrix::lookForPvalue (int64_t requestedScore, int64_t min, int64_t max, do
   }
 #endif
   
-  *pmax = nbocc[length][s];
-  *pmin = iter->second;
+  *pmax = *nbocc[length][s];
+  *pmin = *iter->second;
   
 
 }
@@ -321,12 +322,20 @@ int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, 
   auto riter = nbocc[length-1].rbegin();
   int64_t alpha = riter->first+1;
   int64_t alpha_E = alpha;
-  nbocc[length][alpha] = 0.0;
+  auto it = nbocc[length].find(alpha);
+  if (it!=nbocc[length].end()) {
+    *(it->second) = 0.0;
+  } else {
+    cout << "not found!" << endl;
+  }
   while (riter != nbocc[length-1].rend()) {
-    sum += riter->second;
+    sum += *(riter->second);
     //cout << "Pv(S) " << riter->first << " " << sum << " " << requestedPvalue << endl;
-    nbocc[length][riter->first] = sum;
-    if (sum >= requestedPvalue) { 
+    auto it = nbocc[length].find(riter->first);
+    if (it!=nbocc[length].end()) {
+      *(it->second) = sum;
+    }
+    if (sum >= requestedPvalue) {
       break;
     }
     riter++;      
@@ -343,11 +352,16 @@ int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, 
     } else {
       alpha = riter->first;
       riter++;
-      sum += riter->second;
+      sum += *(riter->second);
       alpha_E = riter->first;
     }
-    nbocc[length][alpha_E] = sum;  
-    //cout << "Pv(S) " << riter->first << " " << sum << endl;   
+    auto it = nbocc[length].find(alpha_E);
+    if (it!=nbocc[length].end()) {
+      *(it->second) = sum;
+    } else {
+      cout << "not found!" << endl;
+    }
+    //cout << "Pv(S) " << riter->first << " " << sum << endl;
   }
 #ifdef VERBOSE
   cerr << riter->first << "      ALPHA found at score " << alpha << " and P-value " << nbocc[length][alpha] << endl;
@@ -369,9 +383,13 @@ int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, 
 #endif
   
   if (alpha - alpha_E > errorMax) alpha_E = alpha;
-  
-  *rpv = nbocc[length][alpha];
-  *rppv = nbocc[length][alpha_E];   
+
+  auto it_a = nbocc[length].find(alpha);
+  if (it_a!=nbocc[length].end())
+    *rpv = *(it_a->second);
+  auto it_ae = nbocc[length].find(alpha_E);
+  if (it_ae!= nbocc[length].end())
+    *rppv = *(it_ae->second);
   
   return alpha;
   
@@ -380,12 +398,12 @@ int64_t Matrix::lookForScore (int64_t min, int64_t max, double requestedPvalue, 
 
 // computes the distribution of scores between score min and max as the DP algrithm proceeds 
 // but instead of using a table we use a map to avoid computations for scores that cannot be reached
-std::vector<absl::btree_map<int64_t, double>> Matrix::calcDistribWithMapMinMax (int64_t min, int64_t max) {
+std::vector<absl::btree_map<int64_t,  std::unique_ptr<double>>> Matrix::calcDistribWithMapMinMax (int64_t min, int64_t max) {
   
   // maps for each step of the computation
   // nbocc[length] stores the pvalue
   // nbocc[pos] for pos < length stores the qvalue
-  vector<absl::btree_map<int64_t, double>> nbocc(length + 1);
+  vector<absl::btree_map<int64_t,  std::unique_ptr<double>>> nbocc(length + 1);
 
   vector<int64_t> maxs(length + 1);; // @ pos i maximum score reachable with the suffix matrix from i to length-1
   
@@ -401,38 +419,54 @@ std::vector<absl::btree_map<int64_t, double>> Matrix::calcDistribWithMapMinMax (
   // initializes the map at position 0
   for (int k = 0; k < 4; k++) {
     if (matInt[k][0]+maxs[1] >= min) {
-      nbocc[0][matInt[k][0]] += background[k];
+      nbocc[0].emplace(matInt[k][0],make_unique<double>(background[k]));
     }
   }
-  
+
   // computes q values for scores greater or equal than min
   //nbocc[length-1][max+1] = 0.0;
-  auto m = nbocc[length-1];
-  auto maxp1 = m.emplace(max+1,0).first;
+
+  auto [it_maxp1, ins] = nbocc[length - 1].try_emplace(max + 1, std::make_unique<double>(0.0));
+  auto& lm1_maxp1 = it_maxp1->second;
+
   for (int pos = 1; pos < length; pos++) {
-    auto iter = nbocc[pos-1].begin();
-    while (iter != nbocc[pos-1].end()) {
-      auto nbocc_p1 = nbocc[pos-1].find(iter->first);
+
+    for (const auto& [idx, val] : nbocc[pos - 1]) {
+
       for (int k = 0; k < 4; k++) {
-        int64_t sc = iter->first + matInt[k][pos];
-        if (sc+maxs[pos+1] >= min) {
+
+        int64_t sc = idx + matInt[k][pos];
+
+        if (sc + maxs[pos + 1] >= min) {
           // the score min can be reached
           if (sc > max) {
             // the score will be greater than max for all suffixes
-            //nbocc[length-1][max+1] += nbocc[pos-1][iter->first] * background[k]; //pow(4,length-pos-1) ;
-            maxp1->second += nbocc_p1->second * background[k]; //pow(4,length-pos-1) ;
+            auto it = nbocc[pos-1].find(idx);
+            if (it != nbocc[pos - 1].end() && lm1_maxp1) {
+              *(lm1_maxp1) += *(val) * background[k];
+            } else {
+              cout << "invalid? " << *(lm1_maxp1) << endl;
+              cout << "invalid? " << *(val) << endl;
+            }
             totalOp++;
-          } else {              
-            //nbocc[pos][sc] += nbocc[pos-1][iter->first] * background[k];
-            nbocc[pos][sc] += nbocc_p1->second * background[k];
+          } else {
+            auto it = nbocc[pos].find(sc);
+            if (it != nbocc[pos].end() && val) {
+              *(it->second) += *(val) * background[k];
+            } else {
+              cout << "invalid? " << *(lm1_maxp1) << endl;
+              cout << "invalid? " << *(val) << endl;
+            }
             totalOp++;
           }
-        } 
+
+        }
       }
-      iter++;      
-    }      
-    //cerr << "        map size for " << pos << " " << nbocc[pos].size() << endl;
+
+    }
   }
+    //cerr << "        map size for " << pos << " " << nbocc[pos].size() << endl;
+
   
   
 
